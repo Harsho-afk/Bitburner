@@ -1,10 +1,7 @@
 import { calcBestRam } from "utils.js";
 
 /** @param {NS} ns **/
-export async function main(ns, numServers = ns.args[0], greedy = (ns.args[1]==undefined)?false:ns.args[1]) {
-    if (greedy) {
-        ns.scriptKill("stockTrader.js", "home");
-    }
+export async function main(ns, numServers = ns.args[0]) {
     const ram = calcBestRam(ns, numServers);
     if (ram == undefined) {
         return;

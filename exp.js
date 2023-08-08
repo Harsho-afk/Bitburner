@@ -8,6 +8,7 @@ export async function main(ns) {
         let target = "joesguns";
         let weakenTime = ns.getWeakenTime(target);
         for (const server of servers) {
+            if(server == "home") continue;
             ns.scp("eWeaken.js", server, "home");
             let threads = Math.max(Math.floor((ns.getServerMaxRam(server) - ns.getServerUsedRam(server)) / 1.75), 1);
             ns.exec("eWeaken.js", server, threads, target);
