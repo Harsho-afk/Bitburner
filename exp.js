@@ -13,6 +13,6 @@ export async function main(ns) {
             let threads = Math.max(Math.floor((ns.getServerMaxRam(server) - ns.getServerUsedRam(server)) / 1.75), 1);
             ns.exec("eWeaken.js", server, threads, target);
         }
-        await ns.sleep(weakenTime + 5);
+        await ns.sleep(weakenTime + 100);
     }
 }

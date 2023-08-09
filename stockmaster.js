@@ -39,7 +39,7 @@ const argsSchema = [
     ['mock', false], // If set to true, will "mock" buy/sell but not actually buy/sell anything
     ['noisy', false], // If set to true, tprints and announces each time stocks are bought/sold
     ['disable-shorts', false], // If set to true, will not short any stocks. Will be set depending on having SF8.2 by default.
-    ['reserve', 100000000], // A fixed amount of money to not spend
+    ['reserve', null], // A fixed amount of money to not spend
     ['fracB', 0.4], // Fraction of assets to have as liquid before we consider buying more stock
     ['fracH', 0.2], // Fraction of assets to retain as cash in hand when buying
     ['buy-threshold', 0.0001], // Buy only stocks forecasted to earn better than a 0.01% return (1 Basis Point)
