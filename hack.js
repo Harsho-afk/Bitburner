@@ -1,22 +1,15 @@
-//source - https://github.com/DarkTechnomancer/darktechnomancer.github.io/tree/main/Part%204%3A%20Periodic
 /** @param {NS} ns */
-export async function main(ns) {
-    const start = performance.now();
-    const port = ns.getPortHandle(ns.pid);
-    const job = JSON.parse(ns.args[0]);
-    let tDelay = 0;
-    let delay = job.end - job.time - Date.now();
+export async function main(ns, info = JSON.parse(ns.args[0])) {
+    let delay = info.end - info.time - Date.now();
     if (delay < 0) {
-        ns.tprint(`WARN: Batch ${job.batch} ${job.type} was ${-delay}ms late. (${job.end})\n`);
-        tDelay = -delay
+        ns.tprint("WARN: Batch " + info.batch + " " + info.type + " was " + -delay + "ms too late. (" + info.end + ")\n");
+        ns.writePort(ns.pid, -delay);
         delay = 0;
+    } else {
+        ns.writePort(ns.pid, 0);
     }
-    const promise = ns.hack(job.target, { additionalMsec: delay });
-    tDelay += performance.now() - start;
-    port.write(tDelay);
-    await promise;
-
+    await ns.hack(info.target, { additionalMsec: delay });
     ns.atExit(() => {
-        if (job.report) ns.writePort(job.port, job.type + job.batch);
+        if (info.report) ns.writePort(info.port, info.type + info.server);
     });
 }
