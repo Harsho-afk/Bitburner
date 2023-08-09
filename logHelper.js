@@ -10,10 +10,6 @@ export async function main(ns) {
     const logPort = ns.getPortHandle(ns.pid);
     logPort.clear();
 
-    let max = 0;
-    let count = 0;
-    let total = 0;
-    let errors = 0;
     while (true) {
         await logPort.nextWrite();
         do {
