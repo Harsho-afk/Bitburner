@@ -1,42 +1,42 @@
 /** @param {NS} ns */
 export function getServers(ns, hostname = "home", servers = [], visited = []) {
-    if (visited.includes(hostname)) return;
-    visited.push(hostname);
-    servers.push(hostname);
-    const connectedNodes = ns.scan(hostname);
-    if (hostname !== "home") connectedNodes.shift();
-    for (const node of connectedNodes) getServers(ns, node, servers, visited);
-    return servers;
+	if (visited.includes(hostname)) return;
+	visited.push(hostname);
+	servers.push(hostname);
+	const connectedNodes = ns.scan(hostname);
+	if (hostname !== "home") connectedNodes.shift();
+	for (const node of connectedNodes) getServers(ns, node, servers, visited);
+	return servers;
 }
 
 /** @param {NS} ns */
 export function getRootAccess(ns, server) {
-    let openPorts = 0;
-    if (ns.fileExists("BruteSSH.exe", "home")) {
-        ns.brutessh(server);
-        openPorts = openPorts + 1;
-    }
-    if (ns.fileExists("ftpcrack.exe", "home")) {
-        ns.ftpcrack(server);
-        openPorts = openPorts + 1;
-    }
-    if (ns.fileExists("relaysmtp.exe", "home")) {
-        ns.relaysmtp(server);
-        openPorts = openPorts + 1;
-    }
-    if (ns.fileExists("httpworm.exe", "home")) {
-        ns.httpworm(server);
-        openPorts = openPorts + 1;
-    }
-    if (ns.fileExists("sqlinject.exe", "home")) {
-        ns.sqlinject(server);
-        openPorts = openPorts + 1;
-    }
-    if (ns.getServerNumPortsRequired(server) <= openPorts) {
-        ns.nuke(server);
-        return true;
-    }
-    return false;
+	let openPorts = 0;
+	if (ns.fileExists("BruteSSH.exe", "home")) {
+		ns.brutessh(server);
+		openPorts = openPorts + 1;
+	}
+	if (ns.fileExists("ftpcrack.exe", "home")) {
+		ns.ftpcrack(server);
+		openPorts = openPorts + 1;
+	}
+	if (ns.fileExists("relaysmtp.exe", "home")) {
+		ns.relaysmtp(server);
+		openPorts = openPorts + 1;
+	}
+	if (ns.fileExists("httpworm.exe", "home")) {
+		ns.httpworm(server);
+		openPorts = openPorts + 1;
+	}
+	if (ns.fileExists("sqlinject.exe", "home")) {
+		ns.sqlinject(server);
+		openPorts = openPorts + 1;
+	}
+	if (ns.getServerNumPortsRequired(server) <= openPorts) {
+		ns.nuke(server);
+		return true;
+	}
+	return false;
 }
 
 //source - https://github.com/DarkTechnomancer/darktechnomancer.github.io/tree/main/Part%204%3A%20Periodic

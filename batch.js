@@ -1,5 +1,5 @@
 //source - https://github.com/DarkTechnomancer/darktechnomancer.github.io/tree/main/Part%204%3A%20Periodic
-import { getServers, isPrepped, prep, Deque } from "utils.js";
+import { getServers, getRootAccess, isPrepped, prep, Deque } from "utils.js";
 
 const TYPES = ["hack", "weaken1", "grow", "weaken2"];
 const WORKERS = ["hack.js", "weaken.js", "grow.js"];
@@ -9,7 +9,7 @@ const COSTS = { hack: 1.7, weaken1: 1.75, grow: 1.75, weaken2: 1.75 };
 const RESERVED_HOME_RAM = 20;
 
 class ContinuousBatcher {
-	#ns; 
+	#ns;
 	#metrics;
 	#ramNet;
 	#target;
@@ -178,12 +178,12 @@ export async function main(ns) {
 	dataPort.clear();
 	let target = ns.args[0] ? ns.args[0] : "n00dles";
 	while (true) {
-        let servers = getServers(ns);
-        servers = servers.filter((server) => getRootAccess(ns, server));
-        servers.forEach((server) => {
-            if(!ns.args[0]) target = targetFinder(ns, server, target, ns.fileExists("Formulas.exe", "home"));
-            ns.scp(WORKERS, server, "home");
-        });
+		let servers = getServers(ns);
+		servers = servers.filter((server) => getRootAccess(ns, server));
+		servers.forEach((server) => {
+			if (!ns.args[0]) target = targetFinder(ns, server, target, ns.fileExists("Formulas.exe", "home"));
+			ns.scp(WORKERS, server, "home");
+		});
 		const ramNet = new RamNet(ns, servers);
 		const metrics = new Metrics(ns, target);
 		if (!isPrepped(ns, target)) await prep(ns, metrics, ramNet);
@@ -403,8 +403,8 @@ function optimizePeriodic(ns, metrics, ramNet) {
 	const minGreed = 0.001;
 	const maxSpacer = wTime; // This is more of an infinite loop safety net than anything.
 	const stepValue = 0.001;
-	let greed = 0.99; 
-	let spacer = metrics.spacer; 
+	let greed = 0.99;
+	let spacer = metrics.spacer;
 
 	while (greed > minGreed && spacer < maxSpacer) {
 		// We calculate a max depth based on the spacer, then add one as a buffer.
