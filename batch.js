@@ -1,5 +1,5 @@
 //source - https://github.com/DarkTechnomancer/darktechnomancer.github.io/tree/main/Part%204%3A%20Periodic
-import { getServers, getRootAccess, isPrepped, prep, Deque } from "utils.js";
+import { getServers, getRootAccess, targetFinder, isPrepped, prep, Deque } from "utils.js";
 
 const TYPES = ["hack", "weaken1", "grow", "weaken2"];
 const WORKERS = ["hack.js", "weaken.js", "grow.js"];

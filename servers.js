@@ -3,20 +3,24 @@ import { calcBestRam } from "utils.js";
 /** @param {NS} ns **/
 export async function main(ns, numServers = ns.args[0]) {
     while (true) {
-        ns.run("stockmaster.js", 1, "-l");
+        let run = false;
+        if (ns.scriptRunning("stockmaster.js", "home")) {
+            run = true;
+            ns.run("stockmaster.js", 1, "-l");
+        }
         await ns.sleep(1000);
         let servers = ns.getPurchasedServers();
         let cost;
         const ram = calcBestRam(ns, numServers);
         if (ram == undefined) {
-            ns.run("stockmaster.js");
+            if (run) ns.run("stockmaster.js");
             await ns.sleep(10 * 60 * 1000);
             continue;
         }
         let count = 0;
         if (servers.length >= ns.getPurchasedServerLimit()) {
             if (ram == ns.getServerMaxRam(servers[0])) {
-                ns.run("stockmaster.js");
+                if (run) ns.run("stockmaster.js");
                 await ns.sleep(10 * 60 * 1000);
                 continue;
             }
@@ -42,7 +46,7 @@ export async function main(ns, numServers = ns.args[0]) {
 
             ns.tprint("Bought " + count + " server of " + ram + "GB. Total cost - " + ns.formatNumber(cost * count));
         }
-        ns.run("stockmaster.js");
+        if (run) ns.run("stockmaster.js");
         await ns.sleep(10 * 60 * 1000);
     }
 }

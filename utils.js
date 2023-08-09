@@ -39,6 +39,49 @@ export function getRootAccess(ns, server) {
 	return false;
 }
 
+/** @param {NS} ns */
+export function targetFinder(ns, server, target = "n00dles", forms = false) {
+    let prevScore, currScore;
+    const serverSim = ns.getServer(server);
+    const pSim = ns.getServer(target);
+    const player = ns.getPlayer();
+    if (ns.getServerRequiredHackingLevel(server) <= ns.getHackingLevel() / (forms ? 1 : 2)) {
+        if (forms) {
+            serverSim.hackDifficulty = serverSim.minDifficulty;
+            pSim.hackDifficulty = pSim.minDifficulty;
+            prevScore = pSim.moneyMax / ns.formulas.hacking.weakenTime(pSim, player) * ns.formulas.hacking.hackChance(pSim, player);
+            currScore = serverSim.moneyMax / ns.formulas.hacking.weakenTime(serverSim, player) * ns.formulas.hacking.hackChance(serverSim, player);
+        } else {
+            prevScore = pSim.moneyMax / pSim.minDifficulty;
+            currScore = serverSim.moneyMax / serverSim.minDifficulty;
+        }
+        if (currScore > prevScore) {
+            target = server;
+        }
+    }
+    return target;
+}
+
+/** @param {NS} ns */
+export function calcBestRam(ns, numServers) {
+    let ramList = [];
+
+    let i = 1;
+    while (ramList.length < 20) {
+        let result = Math.pow(2, i);
+        ramList.push(result);
+        i++;
+    }
+    let affordableRamList = 8;
+    if (ns.getPurchasedServers().length >= ns.getPurchasedServerLimit()) {
+        affordableRamList = ramList.filter(ram => (ns.getPurchasedServers().length * ns.getPurchasedServerUpgradeCost(ns.getPurchasedServers()[0], ram)) <= ns.getServerMoneyAvailable("home"));
+    } else {
+        affordableRamList = ramList.filter(ram => (numServers * ns.getPurchasedServerCost(ram)) <= ns.getServerMoneyAvailable("home"));
+    }
+    const bestRam = ramList[affordableRamList.length - 1];
+    return bestRam;
+}
+
 //source - https://github.com/DarkTechnomancer/darktechnomancer.github.io/tree/main/Part%204%3A%20Periodic
 /*
 	This is an overengineered abomination of a custom data structure. It is essentially a double-ended queue,
