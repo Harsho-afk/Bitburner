@@ -152,7 +152,7 @@ class Servers {
     }
 
     simAssign(threadCosts) {
-        const pRam = this.cloneBlocks();
+        const pRam = this.copyServers();
         let batches = 0;
         let found = true;
         while (found) {
