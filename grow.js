@@ -8,7 +8,7 @@ export async function main(ns, info = JSON.parse(ns.args[0])) {
     } else {
         ns.writePort(ns.pid, 0);
     }
-    await ns.grow(info.target, { additionalMesc: delay });
+    await ns.grow(info.target, { additionalMsec: delay });
     ns.atExit(() => {
         if (info.report) ns.writePort(info.port, info.type + info.server);
     })

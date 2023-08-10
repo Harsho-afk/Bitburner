@@ -6,18 +6,18 @@ const SCRIPTS = { hack: "hack.js", weaken1: "weaken.js", grow: "grow.js", weaken
 const COSTS = { hack: 1.7, weaken1: 1.75, grow: 1.75, weaken2: 1.75 };
 
 /** @param {NS} ns */
-export async function main(ns) {
+export async function main(ns, target) {
     ns.disableLog("ALL");
     ns.tail();
 
     while (true) {
         const batchPort = ns.getPortHandle(ns.pid);
         batchPort.clear();
-        let target = "n00dles";
+        let target = (ns.args[0]) ? ns.args[0] : "n00dles";
         let servers = getServers(ns);
         servers = servers.filter((server) => getRootAccess(ns, server));
         servers.forEach((server) => {
-            target = targetFinder(ns, server, target, ns.fileExists("Formulas.exe", "home"));
+            if (!ns.args[0]) target = targetFinder(ns, server, target, ns.fileExists("Formulas.exe", "home"));
             ns.scp(FILES, server, "home");
         });
         const ramServers = new Servers(ns, servers);
@@ -61,7 +61,7 @@ export async function main(ns) {
             }
             const taskPort = ns.getPortHandle(taskPid);
             await taskPort.nextWrite();
-            info.dely += taskPort.read();
+            info.delay += taskPort.read();
         }
 
         tasks.reverse();
