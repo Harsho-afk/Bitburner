@@ -11,6 +11,9 @@ export function getServers(ns, hostname = "home", servers = [], visited = []) {
 
 /** @param {NS} ns */
 export function getRootAccess(ns, server) {
+    if (ns.hasRootAccess(server)) {
+        return true;
+    }
     let openPorts = 0;
     if (ns.fileExists("BruteSSH.exe", "home")) {
         ns.brutessh(server);
@@ -61,6 +64,7 @@ export function targetFinder(ns, server, target = "n00dles", forms = false) {
     }
     return target;
 }
+
 /** @param {NS} ns */
 export function calcBestRam(ns, numServers) {
     let ramList = [];
@@ -82,38 +86,35 @@ export function calcBestRam(ns, numServers) {
 }
 
 /** @param {NS} ns */
-export function isPrepped(ns, server) {
+export function isPrepped(ns, target) {
     const tolerance = 0.0001;
-    if (ns.getServerMaxMoney(server) == ns.getServerMoneyAvailable(server) && Math.abs(ns.getServerSecurityLevel(server) - ns.getServerMinSecurityLevel(server)) < tolerance) {
+    if (ns.getServerMaxMoney(target) == ns.getServerMoneyAvailable(target) && Math.abs(ns.getServerSecurityLevel(target) - ns.getServerMinSecurityLevel(target)) < tolerance) {
         return true;
     } else {
         return false;
     }
 }
 
-/** 
- * @param {NS} ns 
- * @param {RamInfo} ramInfo
-*/
-export async function prep(ns, target, ramInfo) {
-    const maxMoney = ns.getServerMaxMoney(target);
-    const minSec = ns.getServerMinSecurityLevel(target);
-    let money = ns.getServerMoneyAvailable(target);
-    let sec = ns.getServerSecurityLevel(target);
-    while (!isPrepped(ns, target)) {
-        const weakenTime = ns.getWeakenTime(target);
+/** @param {NS} ns */
+export async function prep(ns, info, ramServers) {
+    const maxMoney = info.maxMoney;
+    const minSec = info.minSec;
+    let money = info.money;
+    let sec = info.sec;
+    while (!isPrepped(ns, info.target)) {
+        const weakenTime = ns.getWeakenTime(info.target);
         const growTime = weakenTime * 0.8;
-        const dataPort = ns.getPortHandle(ns.pid);
-        dataPort.clear();
+        const prepPort = ns.getPortHandle(ns.pid);
+        prepPort.clear();
 
-        const ramServers = ramInfo.copyBlocks();
-        const maxThreads = Math.floor(ramInfo.maxBlockRam / 1.75);
-        const totalThreads = ramInfo.prepThreads;
-        let weakenThreads1 = 0;
-        let weakenThreads2 = 0;
+        const servers = ramServers.copyServers();
+        const maxThreads = Math.floor(ramServers.servers[0].ram / 1.75);
+        const totalThreads = ramServers.prepThreads;
+        let weaken1Threads = 0;
+        let weaken2Threads = 0;
         let growThreads = 0;
         let batchCount = 1;
-        let script, mode, type, report, time, end, port = ns.pid;
+        let script, mode;
         /*
         Modes:
         0: Security only
@@ -122,215 +123,111 @@ export async function prep(ns, target, ramInfo) {
         */
 
         if (money < maxMoney) {
-            growThreads = Math.ceil(ns.growthAnalyze(target, maxMoney / money));
-            weakenThreads2 = Math.ceil(ns.growthAnalyzeSecurity(growThreads) / 0.05);
+            growThreads = Math.ceil(ns.growthAnalyze(info.target, maxMoney / money));
+            weaken2Threads = Math.ceil(ns.growthAnalyzeSecurity(growThreads) / 0.05);
         }
         if (sec > minSec) {
-            weakenThreads1 = Math.ceil((sec - minSec) * 20);
-            if (!(weakenThreads1 + weakenThreads2 + growThreads <= totalThreads && growThreads <= maxThreads)) {
+            weaken1Threads = Math.ceil((sec - minSec) * 20);
+            if (!(weaken1Threads + weaken2Threads + growThreads <= totalThreads && growThreads <= maxThreads)) {
                 growThreads = 0;
-                weakenThreads2 = 0;
-                batchCount = Math.ceil(weakenThreads1 / totalThreads);
-                if (batchCount > 1) weakenThreads1 = totalThreads;
+                weaken2Threads = 0;
+                batchCount = Math.ceil(weaken1Threads / totalThreads);
+                if (batchCount > 1) weaken1Threads = totalThreads;
                 mode = 0;
             } else mode = 2;
-        } else if (growThreads > maxThreads || growThreads + weakenThreads2 > totalThreads) {
+        } else if (growThreads > maxThreads || growThreads + weaken2Threads > totalThreads) {
             mode = 1;
             const oldG = growThreads;
-            weakenThreads2 = Math.max(Math.floor(totalThreads / 13.5), 1);
-            growThreads = Math.floor(weakenThreads2 * 12.5);
+            weaken2Threads = Math.max(Math.floor(totalThreads / 13.5), 1);
+            growThreads = Math.floor(weaken2Threads * 12.5);
             batchCount = Math.ceil(oldG / growThreads);
         } else mode = 2;
 
-        const weaken1End = Date.now() + weakenTime + 1000;
-        const growEnd = weaken1End + 5;
-        const weaken2End = growEnd + 5;
+        const wEnd1 = Date.now() + weakenTime + 1000;
+        const gEnd = wEnd1 + info.spacer;
+        const wEnd2 = gEnd + info.spacer;
 
-        for (const block of ramServers) {
-            while (block.ram >= 1.75) {
-                const maxThreads = Math.floor(block.ram / 1.75)
+        const task = {
+            batch: "prep",
+            target: info.target,
+            type: "none",
+            time: 0,
+            end: 0,
+            port: ns.pid,
+            report: false
+        };
+
+        for (const server of servers) {
+            while (server.ram >= 1.75) {
+                const serverMaxThreads = Math.floor(server.ram / 1.75)
                 let threads = 0;
-                if (weakenThreads1 > 0) {
+                if (weaken1Threads > 0) {
                     script = "weaken.js";
-                    type = "weaken1";
-                    time = weakenTime;
-                    end = weaken1End;
-                    threads = Math.min(weakenThreads1, maxThreads);
-                    if (weakenThreads2 === 0 && weakenThreads1 - threads <= 0) report = true;
-                    weakenThreads1 -= threads;
-                } else if (weakenThreads2 > 0) {
+                    task.type = "pWeaken1";
+                    task.time = weakenTime;
+                    task.end = wEnd1;
+                    threads = Math.min(weaken1Threads, serverMaxThreads);
+                    if (weaken2Threads === 0 && weaken1Threads - threads <= 0) task.report = true;
+                    weaken1Threads -= threads;
+                } else if (weaken2Threads > 0) {
                     script = "weaken.js";
-                    type = "weaken2";
-                    time = weakenTime;
-                    end = weaken2End;
-                    threads = Math.min(weakenThreads2, maxThreads);
-                    if (weakenThreads2 - threads === 0) report = true;
-                    weakenThreads2 -= threads;
+                    task.type = "pWeaken2";
+                    task.time = weakenTime;
+                    task.end = wEnd2;
+                    threads = Math.min(weaken2Threads, serverMaxThreads);
+                    if (weaken2Threads - threads === 0) task.report = true;
+                    weaken2Threads -= threads;
                 } else if (growThreads > 0 && mode === 1) {
                     script = "grow.js";
-                    type = "grow";
-                    time = growTime;
-                    end = growEnd;
-                    threads = Math.min(growThreads, maxThreads);
-                    report = false;
+                    task.type = "pGrow";
+                    task.time = growTime;
+                    task.end = gEnd;
+                    threads = Math.min(growThreads, serverMaxThreads);
+                    task.report = false;
                     growThreads -= threads;
-                } else if (growThreads > 0 && maxThreads >= growThreads) {
+                } else if (growThreads > 0 && serverMaxThreads >= growThreads) {
                     script = "grow.js";
-                    type = "grow";
-                    time = growTime;
-                    end = growEnd;
+                    task.type = "pGrow";
+                    task.time = growTime;
+                    task.end = gEnd;
                     threads = growThreads;
-                    report = false;
+                    task.report = false;
                     growThreads = 0;
                 } else break;
-
-                const info = { server: block.server, target: target, port: port, type: type, time: time, end: end, batch: batchCount, report: report };
-
-                const pid = ns.exec(script, block.server, threads, JSON.stringify(info));
+                task.server = server.server;
+                const pid = ns.exec(script, server.server, threads, JSON.stringify(task));
                 if (!pid) throw new Error("Unable to assign all jobs.");
-                block.ram -= 1.75 * threads;
+                server.ram -= 1.75 * threads;
             }
         }
 
-        const tEnd = ((mode === 0 ? weaken1End : weaken2End) - Date.now()) * batchCount + Date.now();
+        const tEnd = ((mode === 0 ? wEnd1 : wEnd2) - Date.now()) * batchCount + Date.now();
         const timer = setInterval(() => {
             ns.clearLog();
             switch (mode) {
                 case 0:
-                    ns.print(`Weakening security on ${target}...`);
+                    ns.print(`Weakening security on ${info.target}...`);
                     break;
                 case 1:
-                    ns.print(`Maximizing money on ${target}...`);
+                    ns.print(`Maximizing money on ${info.target}...`);
                     break;
                 case 2:
-                    ns.print(`Finalizing preparation on ${target}...`);
+                    ns.print(`Finalizing preparation on ${info.target}...`);
             }
             ns.print(`Security: ${ns.formatNumber(sec - minSec, 3)}`);
             ns.print(`Money: \$${ns.formatNumber(money, 2)}/${ns.formatNumber(maxMoney, 2)}`);
             const time = tEnd - Date.now();
             ns.print(`Estimated time remaining: ${ns.tFormat(time)}`);
             ns.print(`~${batchCount} ${(batchCount === 1) ? "batch" : "batches"}.`);
-        }, 1000);
+        }, 200);
         ns.atExit(() => clearInterval(timer));
 
-        do await dataPort.nextWrite(); while (!dataPort.read().startsWith("weaken"));
+        do await prepPort.nextWrite(); while (!prepPort.read().startsWith("pWeaken"));
         clearInterval(timer);
         await ns.sleep(100);
 
-        money = ns.getServerMoneyAvailable(target);
-        sec = ns.getServerSecurityLevel(target);
+        money = ns.getServerMoneyAvailable(info.target);
+        sec = ns.getServerSecurityLevel(info.target);
     }
     return true;
-}
-
-/** @param {NS} ns */
-export class RamInfo {
-    blocks = [];
-    maxBlockRam = 0;
-    minBlockRam = Infinity;
-    totalRam = 0;
-    maxRam = 0;
-    prepThreads = 0;
-    index = new Map();
-
-    /** @param {NS} ns */
-    constructor(ns, servers) {
-        for (const server of servers) {
-            if (ns.hasRootAccess(server)) {
-                const maxRam = ns.getServerMaxRam(server);
-                const ram = maxRam - ns.getServerUsedRam(server);
-                if (ram > 1.60) {
-                    const block = { server: server, ram: ram };
-                    this.blocks.push(block);
-                    if (ram < this.minBlockRam) this.minBlockRam = ram;
-                    if (ram > this.maxBlockRam) this.maxBlockRam = ram;
-                    this.totalRam += ram;
-                    this.maxRam += maxRam;
-                    this.prepThreads += Math.floor(ram / 1.75);
-                }
-            }
-        }
-        this.sort();
-        this.blocks.forEach((block, index) => this.index.set(block.server, index));
-    }
-
-    sort() {
-        this.blocks.sort((x, y) => {
-            if (x.server === "home") return 1;
-            if (y.server === "home") return -1;
-
-            return y.ram - x.ram;
-        });
-    }
-
-    getBlock(server) {
-        if (this.index.has(server)) {
-            return this.blocks[this.index.get(server)];
-        } else {
-            throw new Error("Server " + server + " not found in RamServer.");
-        }
-    }
-
-    copyBlocks() {
-        return this.blocks.map(block => ({ ...block }));
-    }
-
-    assign(cost) {
-        let server;
-        const block = this.blocks.find(block => block.ram >= cost);
-        if (block) {
-            server = block.server;
-            block.ram -= cost;
-            this.totalRam -= cost;
-        }
-        return server;
-    }
-
-    printBlocks(ns) {
-        for (const block of this.blocks) ns.tprint(block);
-    }
-}
-
-/** 
- * @param {NS} ns 
- * @param {RamInfo} ramInfo
-*/
-export function findBatch(ns, server, ramInfo) {
-    const maxThreads = ramInfo.maxBlockRam / 1.75;
-    const maxMoney = ns.getServerMaxMoney(server);
-    const hackReturnPer = ns.hackAnalyze(server);
-    const minGreed = 0.001;
-    const stepValue = 0.001;
-    let greed = 0.99;
-    while (greed > minGreed) {
-        const amount = maxMoney * greed;
-        const hackThreads = Math.max(Math.floor(ns.hackAnalyzeThreads(server, amount)), 1);
-        const totalHackreturnPer = hackReturnPer * hackThreads;
-        const growThreads = Math.ceil(ns.growthAnalyze(server, maxMoney / (maxMoney - (maxMoney * totalHackreturnPer))));
-        if (Math.max(hackThreads, growThreads) <= maxThreads) {
-            const weakenThreads1 = Math.max(Math.ceil(hackThreads * 0.002 / 0.05), 1);
-            const weakenThreads2 = Math.max(Math.ceil(growThreads * 0.004 / 0.05), 1);
-
-            const threadCost = [hackThreads * 1.7, weakenThreads1 * 1.75, weakenThreads2 * 1.75, growThreads * 1.75];
-
-            const ramServers = ramInfo.copyBlocks();
-            let found;
-            for (const cost of threadCost) {
-                found = false;
-                for (const block of ramServers) {
-                    if (block.ram < cost) continue;
-                    found = true;
-                    block.ram -= cost;
-                    break;
-                }
-                if (found) continue;
-                break;
-            }
-            if (found) {
-                return { greed: greed, hack: hackThreads, weaken1: weakenThreads1, grow: growThreads, weaken2: weakenThreads2 };
-            }
-        }
-        greed -= stepValue;
-    }
-    throw new Error("Not enough ram to run even a single batch. Something has gone seriously wrong.");
 }
