@@ -12,4 +12,4 @@ export async function main(ns, info = JSON.parse(ns.args[0])) {
     ns.atExit(() => {
         if (info.report) ns.writePort(info.port, info.type + info.server);
     })
-}
+} 
